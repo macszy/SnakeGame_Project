@@ -1,0 +1,278 @@
+<!DOCTYPE html> 
+<html lang="en">
+    <head>
+        <title>Snake Game</title>
+        <style>
+            #snake {
+                position: absolute;
+                top:50%;
+                left:50%;
+                transform: translate(-50%, -50%);
+            }
+
+            /*Hide the game area by default*/
+            /*#gameContainer{
+                display: none;
+            }*/
+
+            /*Style for welcome screen*/
+            #welcomeScreen {
+
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba( 0, 0, 0, 0);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                font-size: 2rem;
+            }
+            /*Hide the game imitially*/
+            #gameContainer {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+
+        <!--Welcome screen-->
+        <div id="welcomeScreen">
+            <h1>Welcome to Snake Game!</h1>
+            <button id="startButton">Start Game</button>
+        </div>
+
+        <!--Game content-->
+        <div id="gameContainer">
+
+        Level
+        <select id="level">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+        </select>
+        <button id="play">Play</button>
+        <button id="pause">Pause</button>
+        <button id="quit">Quit</button>
+        <p id="score">Score: 0</p>
+        
+        <canvas id="snake" width="400" height="400"></canvas>
+    </div> 
+    
+    <script>
+        var snake = [ 
+            {x: 50, y: 100},
+            {x: 40, y: 100},
+            {x: 30, y: 100},
+            {x: 20, y: 100},
+            {x: 10, y: 100},
+        ];
+        var changeDir = false;
+        var food = {};
+        var dx = 10, dy = 0;
+        var speed = 6;
+        var looping;
+        var isPaused = false; //track the pause state
+        var isQuit = false; //track the quit state
+
+        const box = document.getElementById("snake");
+        const board = box.getContext("2d");
+
+        const scoreTag = document.getElementById('score'); // Score display
+        var score = 0;
+
+
+        document.getElementById('startButton').addEventListener("click", function(){
+            document.getElementById('welcomeScreen').style.display = "none";
+            document.getElementById('gameContainer').style.display = "block";
+        });
+
+        document.getElementById('play').addEventListener("click", StartGame);
+        document.getElementById('pause').addEventListener("click", PauseGame);
+        document.getElementById('quit').addEventListener("click", QuitGame);
+
+        //Welcome screen start button listener
+        //document.getElementById('startButton').addEventListener("click", ShowGame);
+
+
+        //function to show the game and hide thewelcome screen
+        function ShowGame(){
+            document.getElementById('welcomeScreen').style.display = "none";
+            document.getElementById('gameContainer').style.display = "block";
+        }
+
+        function StartGame() {
+            score = 0;
+            scoreTag.innerText = "Score: " + score;
+
+            // Get the selected level from the dropdown
+            var level = parseInt(document.getElementById("level").value);
+
+            // Adjust the speed based on the level (higher level = faster game)
+            speed = level + 2; // This can be fine-tuned based on how fast you want the game to go
+
+            // Clear any previous game loops
+            if (looping) clearInterval(looping);
+            
+            isPaused = false; //reset pause state
+            document.getElementById('pause').innerText = "Pause";
+
+            isQuit = false;//reset quit loops
+            document.getElementById('quit').innerText = "Quit";
+
+            // Generate initial food and start the game loop
+            GenerateFood();
+            looping = setInterval(loop, 1000 / (2 * speed));
+        }
+
+        function PauseGame(){
+            if (isPaused) {
+                //if paused, resume the game
+                isPaused = false;
+                looping = setInterval(loop, 1000 / (2*speed));
+                document.getElementById('pause').innerText = "Pause";
+            } else {
+                //if paused, pause the gaame
+                isPaused = true;
+                clearInterval(looping);//stop the game loop
+                document.getElementById('pause').innerText = "Resume";
+            }
+        }
+
+        function QuitGame(){
+            if (isQuit) {
+                //if quit, resume the game
+                isQuit = false;
+                looping = setInterval(loop, 1000 / (2*speed));
+                document.getElementById('quit').innerText = "Quit";
+            } else {
+                //if paused, pause the gaame
+                isQuit = true;
+                clearInterval(looping);//stop the game loop
+                document.getElementById('quit').innerText = "Restart";
+                alert('You quit the game!'); 
+            }
+        }
+
+        function loop() {
+            if (IsGameOver()) {
+                clearInterval(looping);
+                return;
+            }
+            changeDir = false;
+            ClearBoard();
+            DrawFood();
+            MoveSnake();
+            DrawSnake();
+            changeDir = false;
+        }
+
+        function MoveSnake() {
+            var head = {
+                x: snake[0].x + dx,
+                y: snake[0].y + dy
+            };
+
+            snake.unshift(head);
+            var hasEatenFood = snake[0].x === food.x && snake[0].y === food.y;
+            if (hasEatenFood) {
+                score++;
+                scoreTag.innerText = "Score: " + score;
+                GenerateFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function DrawSnake() {
+            snake.forEach(function(block) {
+                board.fillStyle = "black";
+                board.strokeStyle = "gray";
+                board.fillRect(block.x, block.y, 10, 10);
+                board.strokeRect(block.x, block.y, 10, 10);
+            });
+        }
+
+        function ClearBoard() {
+            board.fillStyle = "white";
+            board.strokeStyle = "black";
+            board.fillRect(0, 0, box.width, box.height);
+            board.strokeRect(0, 0, box.width, box.height);
+        }
+
+        function IsGameOver() {
+            for (var i = 4; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) {
+                    return true;
+                }
+            }
+            const lw = snake[0].x < 0;
+            const rw = snake[0].x > box.width - 10;
+            const tw = snake[0].y < 0;
+            const bw = snake[0].y > box.height - 10;
+            return lw || rw || tw || bw;
+        }
+
+        function ChangeDirection(e) {
+            const lk = 37, rk = 39, uk = 38, dk = 40;
+
+            if (changeDir) return;
+            changeDir = true;
+
+            let k = e.keyCode;
+            let toUp = dy === -10,
+                toDown = dy === 10,
+                toLeft = dx === -10,
+                toRight = dx === 10;
+
+            if (k === lk && !toRight) {
+                dx = -10;
+                dy = 0;
+            } else if (k == rk && !toLeft) {
+                dx = 10;
+                dy = 0;
+            } else if (k === uk && !toDown) {
+                dx = 0;
+                dy = -10;
+            } else if (k === dk && !toUp) {
+                dx = 0;
+                dy = 10;
+            }
+        }
+
+        function GenerateFood() {
+            food.x = randPos(0, box.width - 10);
+            food.y = randPos(0, box.height - 10);
+            snake.forEach(function(block) {
+                var eaten = block.x == food.x && block.y == food.y;
+                if (eaten) GenerateFood();
+            });
+        }
+
+        function randPos(min, max) {
+            return Math.round((Math.random() * (max - min) + min) / 10) * 10;
+        }
+
+        function DrawFood() {
+            board.fillStyle = "blue";
+            board.strokeStyle = "blue";
+            board.fillRect(food.x, food.y, 10, 10);
+            board.strokeRect(food.x, food.y, 10, 10);
+        }
+
+        // Add event listener for arrow key presses
+        document.addEventListener("keydown", ChangeDirection);
+
+    </script>
+    </body>
+</html>
